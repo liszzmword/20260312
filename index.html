@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>도미노피자 재고·발주 자동화</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #c41e3a;
+            --primary-dark: #a01830;
+            --bg: #f8f5f2;
+            --card: #fff;
+            --text: #2d2d2d;
+            --text-muted: #666;
+            --border: #e5e0db;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        header { background: var(--primary); color: white; padding: 20px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        header h1 { font-size: 1.5rem; font-weight: 700; }
+        header p { opacity: 0.9; font-size: 0.9rem; margin-top: 4px; }
+        .card { background: var(--card); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 24px; margin-bottom: 24px; }
+        .card h2 { margin-bottom: 16px; font-size: 1.2rem; color: var(--text); }
+        .btn { display: inline-block; padding: 10px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; cursor: pointer; border: none; font-size: 0.9rem; font-family: inherit; transition: background 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:hover { background: rgba(196,30,58,0.08); }
+        .btn-small { padding: 6px 12px; font-size: 0.8rem; }
+        .btn-danger { background: #dc2626; color: white; padding: 4px 10px; font-size: 0.8rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f8f9fa; font-weight: 600; font-size: 0.85rem; }
+        input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; font-family: inherit; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        input[type="number"] { text-align: right; min-width: 60px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-box { text-align: center; padding: 16px; background: #f8f9fa; border-radius: 8px; }
+        .stat-box.warning { background: #fef3c7; }
+        .stat-num { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
+        .stat-box.warning .stat-num { color: var(--warning); }
+        .stat-label { font-size: 0.9rem; color: var(--text-muted); margin-top: 4px; }
+        .hidden { display: none !important; }
+        .order-row { background: #fef3c7; }
+        .input-table td { padding: 6px 8px; }
+        .input-table input, .input-table select { padding: 6px 8px; }
+        .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+        footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.85rem; }
+        #login-section { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .login-card { background: var(--card); padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 360px; width: 100%; }
+        .login-card h2 { margin-bottom: 8px; font-size: 1.25rem; }
+        .login-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
+        .login-card input { margin-bottom: 16px; }
+        .login-card .btn { width: 100%; }
+        .login-error { color: var(--error); font-size: 0.85rem; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div id="login-section">
+        <div class="login-card">
+            <h2>🔐 팀 비밀번호</h2>
+            <p>시스템을 사용하려면 비밀번호를 입력하세요.</p>
+            <form id="login-form">
+                <input type="password" id="login-password" placeholder="비밀번호 입력" autocomplete="current-password" required>
+                <button type="submit" class="btn btn-primary" id="btn-login">입장</button>
+                <p class="login-error hidden" id="login-error"></p>
+            </form>
+        </div>
+    </div>
+    <div id="app" class="hidden">
+    <header>
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1>🍕 도미노피자 재고·발주 자동화</h1>
+            <p>재고를 입력한 뒤 분석하면 부족 품목 발주 이메일을 생성합니다.</p>
+        </div>
+        <button type="button" class="btn btn-outline btn-small" id="btn-logout">로그아웃</button>
+        </div>
+    </header>
+    <main class="container">
+        <div id="input-section" class="card">
+            <h2>📝 재고 입력</h2>
+            <p style="margin-bottom: 16px; color: var(--text-muted); font-size: 0.9rem;">
+                <strong>재고 부족:</strong> 현재재고 &lt; 안전재고 &nbsp;|&nbsp;
+                <strong>발주 수량:</strong> MAX(MOQ, 안전재고 - 현재재고)
+            </p>
+            <div class="toolbar">
+                <button type="button" class="btn btn-primary" id="btn-analyze">분석 실행</button>
+                <button type="button" class="btn btn-outline" id="btn-add-row">+ 행 추가</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="input-table" id="input-table">
+                    <thead>
+                        <tr>
+                            <th>품목코드</th>
+                            <th>재료명</th>
+                            <th>규격</th>
+                            <th>단위</th>
+                            <th>현재재고</th>
+                            <th>안전재고</th>
+                            <th>MOQ</th>
+                            <th>거래처</th>
+                            <th>거래처이메일</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="input-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="result-section" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+                <h2 style="margin: 0;">📊 재고 분석 결과</h2>
+                <button type="button" class="btn btn-outline" id="btn-back">← 재고 수정</button>
+            </div>
+            <div class="stats" id="stats"></div>
+            <div id="order-summary-card" class="card hidden">
+                <h2>📮 거래처별 발주 현황</h2>
+                <table>
+                    <thead><tr><th>거래처</th><th>발주 품목 수</th><th>총 권장 발주</th><th>이메일 발송</th></tr></thead>
+                    <tbody id="order-summary-tbody"></tbody>
+                </table>
+            </div>
+            <div class="card">
+                <h2>📦 품목별 재고 현황</h2>
+                <div style="overflow-x: auto;">
+                    <table id="result-table">
+                        <thead>
+                            <tr><th>품목코드</th><th>재료명</th><th>규격/단위</th><th>현재재고</th><th>안전재고</th><th>발주권장</th><th>상태</th><th>거래처</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer>발신 이메일: liszzmword@gmail.com</footer>
+    </div>
+
+    <script>
+        (function auth() {
+            const AUTH_KEY = 'domino_inventory_auth';
+            const loginSection = document.getElementById('login-section');
+            const app = document.getElementById('app');
+            const loginForm = document.getElementById('login-form');
+            const loginPassword = document.getElementById('login-password');
+            const loginError = document.getElementById('login-error');
+
+            function showApp() {
+                loginSection.classList.add('hidden');
+                app.classList.remove('hidden');
+            }
+            function showLogin() {
+                sessionStorage.removeItem(AUTH_KEY);
+                loginSection.classList.remove('hidden');
+                app.classList.add('hidden');
+                loginPassword.value = '';
+                loginError.classList.add('hidden');
+            }
+
+            if (sessionStorage.getItem(AUTH_KEY) === 'ok') {
+                showApp();
+            }
+
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                loginError.classList.add('hidden');
+                const password = loginPassword.value.trim();
+                if (!password) return;
+                try {
+                    const res = await fetch('/api/auth', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: password })
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (res.ok && data.success) {
+                        sessionStorage.setItem(AUTH_KEY, 'ok');
+                        showApp();
+                    } else {
+                        loginError.textContent = data.message || '비밀번호가 올바르지 않습니다.';
+                        loginError.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    loginError.textContent = '연결에 실패했습니다. 다시 시도해주세요.';
+                    loginError.classList.remove('hidden');
+                }
+            });
+
+            document.getElementById('btn-logout').addEventListener('click', showLogin);
+        })();
+
+        const STORE_NAME = '도미노피자';
+        const DEFAULT_ITEMS = [
+            { "품목코드": "ING001", "재료명": "도우볼", "규격": "220g", "단위": "개", "현재재고": 120, "안전재고": 180, "MOQ": 100, "거래처": "도미노푸드서플라이", "거래처이메일": "liszzm@naver.com" },
+            { "품목코드": "ING002", "재료명": "토마토소스", "규격": "3kg", "단위": "팩", "현재재고": 32, "안전재고": 20, "MOQ": 10, "거래처": "도미노푸드서플라이", "거래처이메일": "liszzm@naver.com" },
+            { "품목코드": "ING003", "재료명": "모짜렐라치즈", "규격": "2kg", "단위": "봉", "현재재고": 12, "안전재고": 18, "MOQ": 10, "거래처": "도미노푸드서플라이", "거래처이메일": "liszzm@naver.com" },
+            { "품목코드": "ING004", "재료명": "페퍼로니", "규격": "1kg", "단위": "팩", "현재재고": 15, "안전재고": 12, "MOQ": 8, "거래처": "프레시미트코리아", "거래처이메일": "liszzm@naver.com" },
+            { "품목코드": "ING005", "재료명": "베이컨", "규격": "1kg", "단위": "팩", "현재재고": 6, "안전재고": 10, "MOQ": 10, "거래처": "프레시미트코리아", "거래처이메일": "liszzm@naver.com" },
+            { "품목코드": "ING006", "재료명": "양파", "규격": "5kg", "단위": "봉", "현재재고": 14, "안전재고": 12, "MOQ": 6, "거래처": "그린베지유통", "거래처이메일": "liszzm@naver.com" },
+            { "품목코드": "ING007", "재료명": "피망", "규격": "5kg", "단위": "봉", "현재재고": 5, "안전재고": 8, "MOQ": 5, "거래처": "그린베지유통", "거래처이메일": "liszzm@naver.com" },
+            { "품목코드": "ING008", "재료명": "양송이버섯", "규격": "2.5kg", "단위": "캔", "현재재고": 3, "안전재고": 6, "MOQ": 6, "거래처": "그린베지유통", "거래처이메일": "liszzm@naver.com" },
+            { "품목코드": "ING009", "재료명": "블랙올리브", "규격": "3kg", "단위": "캔", "현재재고": 9, "안전재고": 8, "MOQ": 4, "거래처": "토핑솔루션", "거래처이메일": "liszzm@naver.com" },
+            { "품목코드": "ING010", "재료명": "스위트콘", "규격": "3kg", "단위": "캔", "현재재고": 4, "안전재고": 5, "MOQ": 6, "거래처": "토핑솔루션", "거래처이메일": "liszzm@naver.com" }
+        ];
+
+        let lastInputData = [];
+
+        function renderInputRows(items) {
+            const tbody = document.getElementById('input-tbody');
+            tbody.innerHTML = items.map((item, idx) => `
+                <tr data-idx="${idx}">
+                    <td><input type="text" name="품목코드" value="${item.품목코드 || ''}" placeholder="ING001"></td>
+                    <td><input type="text" name="재료명" value="${item.재료명 || ''}" placeholder="도우볼"></td>
+                    <td><input type="text" name="규격" value="${item.규격 || ''}" placeholder="220g"></td>
+                    <td><input type="text" name="단위" value="${item.단위 || ''}" placeholder="개"></td>
+                    <td><input type="number" name="현재재고" min="0" value="${item.현재재고 ?? ''}" placeholder="0"></td>
+                    <td><input type="number" name="안전재고" min="0" value="${item.안전재고 ?? ''}" placeholder="0"></td>
+                    <td><input type="number" name="MOQ" min="0" value="${item.MOQ ?? ''}" placeholder="0"></td>
+                    <td><input type="text" name="거래처" value="${item.거래처 || ''}" placeholder="거래처명"></td>
+                    <td><input type="email" name="거래처이메일" value="${item.거래처이메일 || ''}" placeholder="email@example.com"></td>
+                    <td><button type="button" class="btn btn-danger btn-remove-row">삭제</button></td>
+                </tr>
+            `).join('');
+            tbody.querySelectorAll('.btn-remove-row').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tr = this.closest('tr');
+                    if (document.querySelectorAll('#input-tbody tr').length <= 1) return;
+                    tr.remove();
+                });
+            });
+        }
+
+        function getInputData() {
+            const rows = document.querySelectorAll('#input-tbody tr');
+            return Array.from(rows).map(tr => {
+                const obj = {};
+                tr.querySelectorAll('input, select').forEach(inp => {
+                    const name = inp.getAttribute('name');
+                    if (!name) return;
+                    const val = inp.value.trim();
+                    if (['현재재고', '안전재고', 'MOQ'].includes(name)) obj[name] = val === '' ? 0 : Number(val) || 0;
+                    else obj[name] = val;
+                });
+                return obj;
+            }).filter(row => row.재료명 || row.품목코드 || row.현재재고 || row.안전재고);
+        }
+
+        function analyzeRow(row) {
+            const current = Number(row.현재재고) || 0;
+            const safety = Number(row.안전재고) || 0;
+            const moq = Number(row.MOQ) || 0;
+            const needOrder = current < safety;
+            const shortage = needOrder ? Math.max(0, safety - current) : 0;
+            const orderQty = needOrder ? Math.max(moq, safety - current) : 0;
+            return { ...row, 부족수량: shortage, 발주권장수량: orderQty, 상태: needOrder ? '발주 필요' : '정상' };
+        }
+
+        function getOrderSummary(inventory) {
+            const orderItems = inventory.filter(i => i.상태 === '발주 필요');
+            const map = {};
+            orderItems.forEach(item => {
+                const key = item.거래처 || '미지정';
+                if (!map[key]) map[key] = { 거래처명: key, 발주품목수: 0, 총권장발주수량: 0, 담당자이메일: item.거래처이메일 || '' };
+                map[key].발주품목수++;
+                map[key].총권장발주수량 += item.발주권장수량 || 0;
+            });
+            return Object.values(map);
+        }
+
+        function buildItemList(items) {
+            return items.map(i => `  - ${i.재료명 || ''} (${(i.규격||'')}${i.단위||'개'}): ${i.발주권장수량||0}${i.단위||'개'}`).join('\n');
+        }
+
+        function createMailtoLink(supplierName, supplierEmail, items) {
+            const orderDate = new Date().toISOString().slice(0, 10);
+            const subject = encodeURIComponent(`[발주요청] ${STORE_NAME} / ${supplierName} / ${orderDate}`);
+            const body = encodeURIComponent(`안녕하세요 ${supplierName} 담당자님.
+
+${STORE_NAME}입니다.
+아래 품목에 대해 발주 요청드립니다.
+
+${buildItemList(items)}
+
+첨부한 발주서 확인 부탁드립니다.
+감사합니다.
+점포 운영매니저`);
+            return `mailto:${supplierEmail || ''}?subject=${subject}&body=${body}`;
+        }
+
+        function renderResult(inventory, orderSummary) {
+            const totalItems = inventory.length;
+            const orderCount = inventory.filter(i => i.상태 === '발주 필요').length;
+
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-box"><div class="stat-num">${totalItems}</div><div class="stat-label">총 품목</div></div>
+                <div class="stat-box warning"><div class="stat-num">${orderCount}</div><div class="stat-label">발주 필요</div></div>
+                <div class="stat-box"><div class="stat-num">${orderSummary.length}</div><div class="stat-label">발주 거래처</div></div>
+            `;
+
+            const summaryCard = document.getElementById('order-summary-card');
+            const summaryTbody = document.getElementById('order-summary-tbody');
+            if (orderSummary.length > 0) {
+                summaryCard.classList.remove('hidden');
+                summaryTbody.innerHTML = orderSummary.map(s => {
+                    const items = inventory.filter(i => i.상태 === '발주 필요' && i.거래처 === s.거래처명);
+                    const mailto = createMailtoLink(s.거래처명, s.담당자이메일 || '', items);
+                    return `<tr>
+                        <td>${s.거래처명}</td><td>${s.발주품목수}</td><td>${s.총권장발주수량}</td>
+                        <td><a href="${mailto}" class="btn btn-primary btn-small btn-mailto">이메일 보내기</a></td>
+                    </tr>`;
+                }).join('');
+                summaryTbody.querySelectorAll('.btn-mailto').forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const href = this.getAttribute('href');
+                        window.location.href = href;
+                        setTimeout(() => {
+                            const sent = confirm('메일 프로그램에서 발송을 완료하셨나요?\n\n완료하셨으면 [확인], 아직이면 [취소]를 눌러주세요.');
+                            if (sent) {
+                                alert('이메일 보냈습니다.');
+                                this.textContent = '이메일 보냄';
+                                this.style.background = '#22c55e';
+                                this.style.pointerEvents = 'none';
+                                this.removeAttribute('href');
+                            }
+                        }, 300);
+                    });
+                });
+            } else {
+                summaryCard.classList.add('hidden');
+            }
+
+            const resultTbody = document.querySelector('#result-table tbody');
+            resultTbody.innerHTML = inventory.map(row => `
+                <tr class="${row.상태 === '발주 필요' ? 'order-row' : ''}">
+                    <td>${row.품목코드 || ''}</td><td>${row.재료명 || ''}</td>
+                    <td>${(row.규격||'')} ${row.단위||''}</td>
+                    <td>${row.현재재고 ?? ''}</td><td>${row.안전재고 ?? ''}</td><td>${row.발주권장수량 || ''}</td>
+                    <td style="color: ${row.상태 === '발주 필요' ? 'var(--error)' : 'var(--success)'}; font-weight: ${row.상태 === '발주 필요' ? 600 : 400}">${row.상태 || ''}</td>
+                    <td>${row.거래처 || ''}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('input-section').classList.add('hidden');
+            document.getElementById('result-section').classList.remove('hidden');
+        }
+
+        document.getElementById('btn-analyze').addEventListener('click', function() {
+            const raw = getInputData();
+            if (raw.length === 0) {
+                alert('최소 1개 품목을 입력해주세요.');
+                return;
+            }
+            lastInputData = raw;
+            const inventory = raw.map(analyzeRow);
+            const orderSummary = getOrderSummary(inventory);
+            renderResult(inventory, orderSummary);
+        });
+
+        document.getElementById('btn-add-row').addEventListener('click', function() {
+            const data = getInputData();
+            data.push({ 품목코드: '', 재료명: '', 규격: '', 단위: '개', 현재재고: 0, 안전재고: 0, MOQ: 0, 거래처: '', 거래처이메일: '' });
+            renderInputRows(data);
+        });
+
+        document.getElementById('btn-back').addEventListener('click', function() {
+            if (lastInputData.length > 0) {
+                renderInputRows(lastInputData);
+            } else {
+                renderInputRows(DEFAULT_ITEMS);
+            }
+            document.getElementById('result-section').classList.add('hidden');
+            document.getElementById('input-section').classList.remove('hidden');
+        });
+
+        renderInputRows(DEFAULT_ITEMS);
+    </script>
+</body>
+</html>
