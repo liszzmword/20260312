@@ -310,27 +310,39 @@ ${buildItemList(items)}
                 summaryCard.classList.remove('hidden');
                 summaryTbody.innerHTML = orderSummary.map(s => {
                     const items = inventory.filter(i => i.상태 === '발주 필요' && i.거래처 === s.거래처명);
-                    const mailto = createMailtoLink(s.거래처명, s.담당자이메일 || '', items);
                     return `<tr>
                         <td>${s.거래처명}</td><td>${s.발주품목수}</td><td>${s.총권장발주수량}</td>
-                        <td><a href="${mailto}" class="btn btn-primary btn-small btn-mailto">이메일 보내기</a></td>
+                        <td><button type="button" class="btn btn-primary btn-small btn-send-email" data-name="${(s.거래처명||'').replace(/"/g, '&quot;')}" data-email="${(s.담당자이메일||'').replace(/"/g, '&quot;')}">이메일 보내기</button></td>
                     </tr>`;
                 }).join('');
-                summaryTbody.querySelectorAll('.btn-mailto').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const href = this.getAttribute('href');
-                        window.location.href = href;
-                        setTimeout(() => {
-                            const sent = confirm('메일 프로그램에서 발송을 완료하셨나요?\n\n완료하셨으면 [확인], 아직이면 [취소]를 눌러주세요.');
-                            if (sent) {
+                summaryTbody.querySelectorAll('.btn-send-email').forEach(btn => {
+                    btn.addEventListener('click', async function() {
+                        const name = this.getAttribute('data-name');
+                        const email = this.getAttribute('data-email');
+                        const items = inventory.filter(i => i.상태 === '발주 필요' && i.거래처 === name);
+                        this.disabled = true;
+                        this.textContent = '발송 중...';
+                        try {
+                            const res = await fetch('/api/send-order', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ supplier_name: name, to_email: email, items: items })
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (res.ok && data.success) {
                                 alert('이메일 보냈습니다.');
                                 this.textContent = '이메일 보냄';
                                 this.style.background = '#22c55e';
-                                this.style.pointerEvents = 'none';
-                                this.removeAttribute('href');
+                            } else {
+                                this.textContent = '이메일 보내기';
+                                this.disabled = false;
+                                alert(data.message || '발송에 실패했습니다.');
                             }
-                        }, 300);
+                        } catch (e) {
+                            this.textContent = '이메일 보내기';
+                            this.disabled = false;
+                            alert('연결에 실패했습니다. 다시 시도해주세요.');
+                        }
                     });
                 });
             } else {

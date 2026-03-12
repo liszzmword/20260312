@@ -7,6 +7,7 @@
 1. [Vercel](https://vercel.com)에 로그인 후 **Import** → GitHub 저장소 `liszzmword/20260312` 선택
 2. **Environment Variables**에 추가:
    - `TEAM_PASSWORD` = 팀에서 사용할 비밀번호
+   - `GMAIL_APP_PASSWORD` = Gmail 앱 비밀번호 (liszzmword@gmail.com 계정, [앱 비밀번호 생성](https://myaccount.google.com/apppasswords))
 3. **Deploy** 실행
 
 배포된 URL에 접속하면 비밀번호 입력 화면이 나오고, 올바른 비밀번호 입력 시 재고 입력 화면이 열립니다.
@@ -16,7 +17,7 @@
 1. 팀 비밀번호 입력 후 **입장**
 2. 재고 입력 (현재재고, 안전재고, MOQ, 거래처, 이메일 등)
 3. **분석 실행** → 부족 품목·발주 권장 수량 확인
-4. **이메일 보내기** 클릭 → 메일 프로그램에서 발송
+4. **이메일 보내기** 클릭 → 서버에서 liszzmword@gmail.com으로 담당자에게 발송
 
 ## 로컬에서 확인
 
