@@ -3,68 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>도미노피자 재고·발주 자동화</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>재고·발주 자동화</title>
     <style>
         :root {
-            --primary: #c41e3a;
-            --primary-dark: #a01830;
-            --bg: #f8f5f2;
-            --card: #fff;
-            --text: #2d2d2d;
-            --text-muted: #666;
-            --border: #e5e0db;
-            --success: #22c55e;
-            --error: #ef4444;
-            --warning: #f59e0b;
+            --text: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --link: #0066cc;
+            --bg: #fff;
+            --bg-subtle: #f5f5f7;
+            --border: #d2d2d7;
+            --success: #34c759;
+            --error: #ff3b30;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
-        header { background: var(--primary); color: white; padding: 20px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        header h1 { font-size: 1.5rem; font-weight: 700; }
-        header p { opacity: 0.9; font-size: 0.9rem; margin-top: 4px; }
-        .card { background: var(--card); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 24px; margin-bottom: 24px; }
-        .card h2 { margin-bottom: 16px; font-size: 1.2rem; color: var(--text); }
-        .btn { display: inline-block; padding: 10px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; cursor: pointer; border: none; font-size: 0.9rem; font-family: inherit; transition: background 0.2s; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
-        .btn-outline:hover { background: rgba(196,30,58,0.08); }
-        .btn-small { padding: 6px 12px; font-size: 0.8rem; }
-        .btn-danger { background: #dc2626; color: white; padding: 4px 10px; font-size: 0.8rem; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background: #f8f9fa; font-weight: 600; font-size: 0.85rem; }
-        input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; font-family: inherit; }
-        input:focus, select:focus { outline: none; border-color: var(--primary); }
-        input[type="number"] { text-align: right; min-width: 60px; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-box { text-align: center; padding: 16px; background: #f8f9fa; border-radius: 8px; }
-        .stat-box.warning { background: #fef3c7; }
-        .stat-num { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
-        .stat-box.warning .stat-num { color: var(--warning); }
-        .stat-label { font-size: 0.9rem; color: var(--text-muted); margin-top: 4px; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.47059;
+            font-weight: 400;
+            letter-spacing: -0.022em;
+        }
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            height: 44px;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 22px;
+        }
+        .nav-brand { font-size: 21px; font-weight: 600; color: var(--text); text-decoration: none; }
+        .nav-actions { display: flex; align-items: center; gap: 24px; font-size: 12px; }
+        .nav-actions a, .nav-actions button {
+            color: var(--text-secondary);
+            text-decoration: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font: inherit;
+        }
+        .nav-actions a:hover, .nav-actions button:hover { color: var(--link); }
+        .banner {
+            background: var(--bg-subtle);
+            text-align: center;
+            padding: 10px 0;
+            font-size: 14px;
+        }
+        .banner a { color: var(--link); text-decoration: none; }
+        .banner a:hover { text-decoration: underline; }
+        .container { max-width: 980px; margin: 0 auto; padding: 0 22px; }
+        .page-title {
+            font-size: 40px;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+            margin: 52px 0 24px;
+            line-height: 1.1;
+        }
+        .section { margin-bottom: 48px; }
+        .section-title { font-size: 24px; font-weight: 600; margin-bottom: 16px; }
+        .section-desc { font-size: 17px; color: var(--text-secondary); margin-bottom: 24px; }
+        .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn {
+            display: inline-block;
+            padding: 10px 22px;
+            border-radius: 980px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: var(--text); color: #fff; }
+        .btn-secondary { background: var(--bg-subtle); color: var(--text); }
+        .btn-ghost { background: transparent; color: var(--link); }
+        .btn-small { padding: 6px 14px; font-size: 12px; }
+        .btn-danger { background: #ff3b30; color: #fff; padding: 4px 12px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { font-weight: 600; color: var(--text-secondary); }
+        input, select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--bg);
+        }
+        input:focus, select:focus { outline: none; border-color: var(--text-secondary); }
+        input[type="number"] { text-align: right; min-width: 56px; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 24px 16px;
+            background: var(--bg-subtle);
+            border-radius: 12px;
+        }
+        .stat-num { font-size: 28px; font-weight: 600; color: var(--text); }
+        .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .stat-box.highlight .stat-num { color: var(--link); }
+        .order-row { background: #fff8f5; }
         .hidden { display: none !important; }
-        .order-row { background: #fef3c7; }
-        .input-table td { padding: 6px 8px; }
-        .input-table input, .input-table select { padding: 6px 8px; }
-        .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-        footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.85rem; }
-        #login-section { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-        .login-card { background: var(--card); padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 360px; width: 100%; }
-        .login-card h2 { margin-bottom: 8px; font-size: 1.25rem; }
-        .login-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
+        #login-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: var(--bg-subtle);
+        }
+        .login-card {
+            background: var(--bg);
+            padding: 48px 40px;
+            border-radius: 18px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+        .login-card .section-title { margin-bottom: 8px; }
+        .login-card .section-desc { margin-bottom: 28px; }
         .login-card input { margin-bottom: 16px; }
         .login-card .btn { width: 100%; }
-        .login-error { color: var(--error); font-size: 0.85rem; margin-top: 8px; }
+        .login-error { color: var(--error); font-size: 13px; margin-top: 10px; }
+        footer {
+            background: var(--bg-subtle);
+            padding: 20px 22px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div id="login-section">
         <div class="login-card">
-            <h2>🔐 팀 비밀번호</h2>
-            <p>시스템을 사용하려면 비밀번호를 입력하세요.</p>
+            <h2 class="section-title">팀 비밀번호</h2>
+            <p class="section-desc">시스템을 사용하려면 비밀번호를 입력하세요.</p>
             <form id="login-form">
                 <input type="password" id="login-password" placeholder="비밀번호 입력" autocomplete="current-password" required>
                 <button type="submit" class="btn btn-primary" id="btn-login">입장</button>
@@ -73,25 +161,24 @@
         </div>
     </div>
     <div id="app" class="hidden">
-    <header>
-        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <h1>🍕 도미노피자 재고·발주 자동화</h1>
-            <p>재고를 입력한 뒤 분석하면 부족 품목 발주 이메일을 생성합니다.</p>
+    <nav class="nav">
+        <a href="#" class="nav-brand">재고·발주</a>
+        <div class="nav-actions">
+            <button type="button" id="btn-logout">로그아웃</button>
         </div>
-        <button type="button" class="btn btn-outline btn-small" id="btn-logout">로그아웃</button>
-        </div>
-    </header>
+    </nav>
+    <div class="banner">
+        <a href="#">재고 부족 시 발주 이메일을 자동 발송합니다. 발신: liszzmword@gmail.com</a>
+    </div>
     <main class="container">
-        <div id="input-section" class="card">
-            <h2>📝 재고 입력</h2>
-            <p style="margin-bottom: 16px; color: var(--text-muted); font-size: 0.9rem;">
-                <strong>재고 부족:</strong> 현재재고 &lt; 안전재고 &nbsp;|&nbsp;
-                <strong>발주 수량:</strong> MAX(MOQ, 안전재고 - 현재재고)
+        <div id="input-section" class="section">
+            <h1 class="page-title">재고 입력</h1>
+            <p class="section-desc">
+                재고 부족 기준: 현재재고 &lt; 안전재고 · 발주 수량: MAX(MOQ, 안전재고 − 현재재고)
             </p>
             <div class="toolbar">
                 <button type="button" class="btn btn-primary" id="btn-analyze">분석 실행</button>
-                <button type="button" class="btn btn-outline" id="btn-add-row">+ 행 추가</button>
+                <button type="button" class="btn btn-secondary" id="btn-add-row">행 추가</button>
             </div>
             <div style="overflow-x: auto;">
                 <table class="input-table" id="input-table">
@@ -115,20 +202,20 @@
         </div>
 
         <div id="result-section" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
-                <h2 style="margin: 0;">📊 재고 분석 결과</h2>
-                <button type="button" class="btn btn-outline" id="btn-back">← 재고 수정</button>
+            <h1 class="page-title">재고 분석 결과</h1>
+            <div class="toolbar" style="margin-bottom: 32px;">
+                <button type="button" class="btn btn-ghost" id="btn-back">← 재고 수정</button>
             </div>
             <div class="stats" id="stats"></div>
-            <div id="order-summary-card" class="card hidden">
-                <h2>📮 거래처별 발주 현황</h2>
+            <div id="order-summary-card" class="section hidden">
+                <h2 class="section-title">거래처별 발주 현황</h2>
                 <table>
                     <thead><tr><th>거래처</th><th>발주 품목 수</th><th>총 권장 발주</th><th>이메일 발송</th></tr></thead>
                     <tbody id="order-summary-tbody"></tbody>
                 </table>
             </div>
-            <div class="card">
-                <h2>📦 품목별 재고 현황</h2>
+            <div class="section">
+                <h2 class="section-title">품목별 재고 현황</h2>
                 <div style="overflow-x: auto;">
                     <table id="result-table">
                         <thead>
@@ -300,7 +387,7 @@ ${buildItemList(items)}
 
             document.getElementById('stats').innerHTML = `
                 <div class="stat-box"><div class="stat-num">${totalItems}</div><div class="stat-label">총 품목</div></div>
-                <div class="stat-box warning"><div class="stat-num">${orderCount}</div><div class="stat-label">발주 필요</div></div>
+                <div class="stat-box highlight"><div class="stat-num">${orderCount}</div><div class="stat-label">발주 필요</div></div>
                 <div class="stat-box"><div class="stat-num">${orderSummary.length}</div><div class="stat-label">발주 거래처</div></div>
             `;
 
@@ -332,7 +419,7 @@ ${buildItemList(items)}
                             if (res.ok && data.success) {
                                 alert('이메일 보냈습니다.');
                                 this.textContent = '이메일 보냄';
-                                this.style.background = '#22c55e';
+                                this.style.background = 'var(--success)';
                             } else {
                                 this.textContent = '이메일 보내기';
                                 this.disabled = false;
